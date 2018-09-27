@@ -75,7 +75,7 @@
 #    - выбрал зачеркнуть, а такого номер нет
 #    - выбрал продолжить, а номер-то был
 #    - решил сам выйти (в условии этого нет, но так красивее)
-#    - вся карточка компьютера компьютера заполнилась
+#    - вся карточка компьютера заполнилась
 #    - вся карточка игрока заполнилась
 # 5. Выводим на экран, что игра завершена.
 #
@@ -96,9 +96,8 @@ MAX_BARREL = 90
 DIGITS_IN_CARD = 15
 DIGITS_IN_LINE = 5
 
+
 # Итак, для начала сгенерируем список бочонков и напишем функцию выдачи очередного бочонка:
-
-
 def make_barr_list():
     return random.sample(range(1, MAX_BARREL + 1), 90)
 
@@ -107,18 +106,76 @@ def take_barrel(barr_list):
     return barr_list.pop()
 
 
-# Теперь нужно создать карточки и красиво их вывести на экран.
-
-
-def gen_card():
-    '''
-    :return: combination of int digits without repetition, k = DIGITS_IN_CARD, n = 1..MAX_BARREL, divided into 3 sorted lines
-    eg. [[2, 11, 14, 30, 79], [43, 54, 60, 69, 77], [16, 74, 81, 82, 83]]
-    '''
-    # combination of 15 random digits 1..MAX_BARREL without repetitions
+# Теперь нужно создать карточки и красиво их вывести на экран. Делаем генератор и форматированный вывод
+def make_card():
     num_comb = random.sample(range(1, MAX_BARREL + 1), DIGITS_IN_CARD)
-    # make list of sorted slices of num_comb of size DIGITS_IN_LINE;
-    # ie. divide num_comb into 3 sorted lists
     card = [sorted(num_comb[i:i + DIGITS_IN_LINE]) for i in range(0, len(num_comb), DIGITS_IN_LINE)]
     return card
 
+
+def display_card(card):
+    card = copy.deepcopy(card)  # тут воспользуемся хитрым модулем copy, который скопирует исходник без изменений
+    placeholders = ' '.join(['{:>2}' for i in range(9)])  # как было в задаче с фруктами, делаем 9 ячеек
+    for line in card:
+        for space in ' ' * 4:
+            line.insert(random.randint(0, len(line) - 1), space)  # Вставляем спейсеры в случайные места карточки
+    return [placeholders.format(*line) for line in card]
+
+
+# Зачеркиваем бочонки в карточке
+def stroke_card(card, barrel):
+    for line in card:
+        yield ['-' if x == barrel else x for x in line]
+
+
+# Проверяем остались ли еще незачеркнутые бочонки
+def is_empty(card):
+    for line in card:
+        for elt in line:
+            if elt != '-':
+                return False
+    return True
+
+
+# Проверяем, содержится ли бочонк в карточке
+def barr_in_card(card, barrel):
+    return barrel in [barrel for line in card for barrel in line]
+
+
+# Основной цикл раунда
+def play_round():
+
+    player_card = make_card()
+    comp_card = make_card()
+    barrels = make_barr_list()
+    while True:  # check if all digits are crossed
+        next_barrel = take_barrel(barrels)
+        print('\nВыпал бочонок: {}. Всего осталось: {}'.format(next_barrel, len(barrels)))
+        print("{0} Твоя карточка {0}\n{1}\n{2}\n{3}".format('-' * 6, *display_card(player_card)))
+        print("{0} Карточка компьютера {0}\n{1}\n{2}\n{3}".format('-' * 5, *display_card(comp_card)))
+        answ = 'a'
+        while answ not in 'ynq':
+            answ = input("В твоей карточке есть этот бочонок? \n "
+                         "y - да, есть (зачеркнуть) \n "
+                         "n - нет такого бочонка \n "
+                         "q - выход")
+        if answ == 'q':
+            break
+        elif (answ == 'y' and barr_in_card(player_card, next_barrel)) or (answ == 'n' and not barr_in_card(player_card, next_barrel)):
+            print("Отлично!")
+        else:
+            print("Ты проиграл!")
+            break
+        player_card = list(stroke_card(player_card, next_barrel))
+        comp_card = list(stroke_card(comp_card, next_barrel))
+        if is_empty(player_card):
+            print('Ты заполнил всю карточку!')
+            break
+        if is_empty(comp_card):
+            print('компьютер заполнил свою карточку!')
+            break
+
+
+print('Инструкция: \nЦель игры - зачеркнуть все бочонки в своей карточке раньше, чем это сделает компьютер')
+
+play_round()
